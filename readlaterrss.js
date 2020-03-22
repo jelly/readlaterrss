@@ -1,14 +1,12 @@
 const fs = require('fs');
 
-
 const bhttp = require("bhttp");
 const Readability = require("readability");
 const JSDOM = require('jsdom').JSDOM;
 const createDOMPurify = require('dompurify');
 const Feed = require('feed').Feed;
+const argv = require('yargs').argv;
 
-
-const url = 'https://arunrocks.com/a-guide-to-asgi-in-django-30-and-its-performance/';
 
 function sanitize(content) {
   const window = new JSDOM('').window;
@@ -41,7 +39,7 @@ function createfeed(post) {
   fs.writeFile("feed.atom", feed.rss2(), function(err) {});
 }
 
-async function main() {
+async function readlater(url) {
   const response = await bhttp.get(url);
   const body = response.body.toString();
   const doc = new JSDOM(body, {
@@ -59,9 +57,10 @@ async function main() {
   };
 
   createfeed(post);
-
-  fs.writeFile("output.html", content, function(err) {});
 }
 
-
-main()
+if (argv.url) {
+  readlater(argv.url);
+} else {
+  console.error("Missing argument --url");
+}
