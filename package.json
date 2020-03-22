@@ -1,0 +1,16 @@
+{
+  "name": "readlaterrss",
+  "version": "0.0.1",
+  "description": "Read website's later on an RSS feed",
+  "main": "index.js",
+  "author": "Jelle van der Waa <jelle@vdwaa.nl>",
+  "license": "MIT",
+  "dependencies": {
+    "bhttp": "^1.2.6",
+    "dompurify": "^2.0.8",
+    "feed": "^4.1.0",
+    "jsdom": "^16.2.0",
+    "readability": "github:mozilla/readability#dc34dfd8fa6d5c17801efbc2e115dc368b7117c8",
+    "request-promise-native": "latest"
+  }
+}
