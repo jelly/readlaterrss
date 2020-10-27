@@ -1,0 +1,98 @@
+#!/usr/bin/python
+
+import argparse
+import datetime
+import sys
+import sqlite3
+import subprocess
+
+import bleach
+import requests
+import lxml.html
+
+from feedgen.feed import FeedGenerator
+
+
+CMD = '/usr/bin/rdrview'
+
+
+def initdb(conn):
+    sql = '''CREATE TABLE IF NOT EXISTS feed (id INTEGER PRIMARY KEY
+    AUTOINCREMENT, date timestamp, url text unique, title text, html text)'''
+    conn.execute(sql)
+
+
+def generate_feed(conn, rss_file):
+    query = 'SELECT url,html,title from feed'
+    cur = conn.cursor()
+
+    cur.execute(query)
+    records = cur.fetchall()
+
+    fg = FeedGenerator()
+    fg.id('http://example.com/')
+    fg.title('Readlater rss')
+    fg.subtitle('Read later rss feed')
+    fg.link(href='http://example.com/test.atom', rel='self')
+
+    for record in records:
+        url = record[0]
+        html = record[1]
+        title = record[2]
+
+        fe = fg.add_entry()
+        fe.id(url)
+        fe.title(title)
+        fe.link(href=url)
+        fe.content(html)
+
+    fg.rss_str(pretty=True)
+    fg.rss_file(rss_file)
+
+
+def main(rss_file, url, db_file):
+    req = requests.get(url)
+    doc = lxml.html.fromstring(req.content)
+    title = doc.find('.//title').text
+
+    with sqlite3.connect(db_file) as conn:
+        initdb(conn)
+
+        proc = subprocess.Popen([CMD, "-H", url], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        try:
+            outs, errs = proc.communicate(timeout=15)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            outs, errs = proc.communicate()
+
+        if errs or not outs:
+            print(f'{CMD} could not parse url', file=sys.stderr)
+            sys.exit(1)
+
+        allowed_tags = bleach.sanitizer.ALLOWED_TAGS
+        allowed_tags += ['p', 'pre', 'code', 'div', 'h1', 'h2', 'h3', 'h4', 'img', 'article', 'section', 'dl', 'dt', 'dd', 'span', 'figure', 'header', 'small']
+
+        html = bleach.clean(outs.decode(), tags=allowed_tags)
+
+        query = 'INSERT INTO feed (date, title, url, html) VALUES (?,?,?,?);'
+        data = (datetime.datetime.now(), title, url, html)
+
+        try:
+            conn.execute(query, data)
+        except sqlite3.IntegrityError as e:
+            print(e)
+            sys.exit(1)
+
+
+        generate_feed(conn, rss_file)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Generate a RSS feed with given url.')
+    parser.add_argument('--feed', type=str, default="feed.atom", help='the rss feed file')
+    parser.add_argument('--url', type=str, help='the url to add to the RSS feed')
+    parser.add_argument('--db', type=str, help='the path to the SQLite db', default='feed.db')
+
+    args = parser.parse_args()
+
+    main(args.feed, args.url, args.db)
