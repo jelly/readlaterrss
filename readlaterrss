@@ -89,8 +89,8 @@ def main(rss_file, url, db_file):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Generate a RSS feed with given url.')
-    parser.add_argument('--feed', type=str, default="feed.atom", help='the rss feed file', required=True)
-    parser.add_argument('--url', type=str, help='the url to add to the RSS feed', required=True)
+    parser.add_argument('--feed', type=str, default="feed.atom", help='the rss feed file')
+    parser.add_argument('--url', type=str, help='the url to add to the RSS feed')
     parser.add_argument('--db', type=str, help='the path to the SQLite db', default='feed.db')
 
     args = parser.parse_args()
